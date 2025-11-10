@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecteur PDF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #pdfViewerContainer {
+            width: 100vw;
+            height: 100vh;
+        }
+        #pdfCanvasContainer {
+            max-height: calc(100vh - 120px);
+        }
+    </style>
+</head>
+<body>
+    <div id="pdfViewerContainer">
+        <div id="pdfControls" style="text-align:center;margin-bottom:10px;padding-top:10px;">
+            <button id="pdfZoomOut" style="border-radius:999px;padding:10px 20px;cursor:pointer;">-</button>
+            <button id="pdfZoomIn" style="border-radius:999px;padding:10px 20px;cursor:pointer;">+</button>
+            <button id="pdfFullscreen" style="border-radius:999px;padding:10px 20px;cursor:pointer;">⛶ Plein écran</button>
+        </div>
+        <div id="pdfCanvasContainer" style="text-align:center;overflow:auto;position:relative;">
+            <button id="pdfArrowLeft" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);color:white;border:none;border-radius:50%;width:60px;height:60px;font-size:32px;cursor:pointer;opacity:0.7;z-index:10;">‹</button>
+            <canvas id="pdfCanvas"></canvas>
+            <button id="pdfArrowRight" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);color:white;border:none;border-radius:50%;width:60px;height:60px;font-size:32px;cursor:pointer;opacity:0.7;z-index:10;">›</button>
+        </div>
+        <div id="pdfNavControls" style="text-align:center;margin-top:10px;padding-bottom:30px;">
+            <button id="pdfPrevPage" style="border-radius:999px;padding:10px 20px;cursor:pointer;">← Précédent</button>
+            <span id="pdfPageInfo" style="margin:0 15px;"></span>
+            <button id="pdfNextPage" style="border-radius:999px;padding:10px 20px;cursor:pointer;">Suivant →</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+    (function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const pdfUrl = urlParams.get('pdf') || 'https://208d2653-a535-4df9-bed9-28aa5a432ac2.usrfiles.com/ugd/7d69d1_1e4452b1c7e34dd492b365c324553b36.pdf';
+        
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let scale = 1.5;
+        let baseScale = 1.5;
+        let maxPageWidth = 0;
+        let userZoomAdjustment = 0;
+
+        const canvas = document.getElementById('pdfCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(page => {
+                const viewport = page.getViewport({ scale: scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(() => {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+
+            document.getElementById('pdfPageInfo').textContent = `Page ${num} / ${pdfDoc.numPages}`;
+            document.getElementById('pdfPrevPage').disabled = (num <= 1);
+            document.getElementById('pdfNextPage').disabled = (num >= pdfDoc.numPages);
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function onPrevPage() {
+            if (pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+        }
+
+        function onNextPage() {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+        }
+
+        function zoomIn() {
+            userZoomAdjustment += 0.25;
+            scale = baseScale + userZoomAdjustment;
+            queueRenderPage(pageNum);
+        }
+
+        function zoomOut() {
+            if (scale <= 0.5) return;
+            userZoomAdjustment -= 0.25;
+            scale = baseScale + userZoomAdjustment;
+            queueRenderPage(pageNum);
+        }
+
+        function calculateOptimalZoom() {
+            const container = document.getElementById('pdfCanvasContainer');
+            const containerWidth = container.clientWidth - 40;
+            baseScale = containerWidth / maxPageWidth;
+            scale = baseScale + userZoomAdjustment;
+        }
+
+        function toggleFullscreen() {
+            const container = document.getElementById('pdfViewerContainer');
+            
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().catch(err => {
+                    console.error('Erreur plein écran:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        document.addEventListener('fullscreenchange', function() {
+            const arrowLeft = document.getElementById('pdfArrowLeft');
+            const arrowRight = document.getElementById('pdfArrowRight');
+            const pageInfo = document.getElementById('pdfPageInfo');
+            
+            if (document.fullscreenElement) {
+                arrowLeft.style.width = '80px';
+                arrowLeft.style.height = '80px';
+                arrowLeft.style.fontSize = '48px';
+                arrowLeft.style.background = 'rgba(255,255,255,0.8)';
+                arrowLeft.style.color = 'black';
+                arrowRight.style.width = '80px';
+                arrowRight.style.height = '80px';
+                arrowRight.style.fontSize = '48px';
+                arrowRight.style.background = 'rgba(255,255,255,0.8)';
+                arrowRight.style.color = 'black';
+                pageInfo.style.color = 'white';
+            } else {
+                arrowLeft.style.width = '60px';
+                arrowLeft.style.height = '60px';
+                arrowLeft.style.fontSize = '32px';
+                arrowLeft.style.background = 'rgba(0,0,0,0.5)';
+                arrowLeft.style.color = 'white';
+                arrowRight.style.width = '60px';
+                arrowRight.style.height = '60px';
+                arrowRight.style.fontSize = '32px';
+                arrowRight.style.background = 'rgba(0,0,0,0.5)';
+                arrowRight.style.color = 'white';
+                pageInfo.style.color = '';
+            }
+            
+            setTimeout(() => {
+                calculateOptimalZoom();
+                queueRenderPage(pageNum);
+            }, 100);
+        });
+
+        document.getElementById('pdfPrevPage').addEventListener('click', onPrevPage);
+        document.getElementById('pdfNextPage').addEventListener('click', onNextPage);
+        document.getElementById('pdfZoomIn').addEventListener('click', zoomIn);
+        document.getElementById('pdfZoomOut').addEventListener('click', zoomOut);
+        document.getElementById('pdfFullscreen').addEventListener('click', toggleFullscreen);
+        document.getElementById('pdfArrowLeft').addEventListener('click', onPrevPage);
+        document.getElementById('pdfArrowRight').addEventListener('click', onNextPage);
+
+        pdfjsLib.getDocument(pdfUrl).promise.then(pdfDoc_ => {
+            pdfDoc = pdfDoc_;
+            
+            const pagePromises = [];
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                pagePromises.push(pdfDoc.getPage(i));
+            }
+            
+            Promise.all(pagePromises).then(pages => {
+                pages.forEach(page => {
+                    const viewport = page.getViewport({ scale: 1 });
+                    if (viewport.width > maxPageWidth) {
+                        maxPageWidth = viewport.width;
+                    }
+                });
+                
+                calculateOptimalZoom();
+                renderPage(pageNum);
+            });
+        }).catch(err => {
+            console.error('Erreur de chargement du PDF:', err);
+            document.getElementById('pdfCanvasContainer').innerHTML = '<div style="padding:20px;color:red;">Erreur de chargement du PDF. Vérifiez que l\'URL est correcte et accessible.</div>';
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft') onPrevPage();
+            if (e.key === 'ArrowRight') onNextPage();
+        });
+    })();
+    </script>
+</body>
+</html>
