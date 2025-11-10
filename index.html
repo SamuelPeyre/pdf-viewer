@@ -256,4 +256,17 @@
                 renderPage(pageNum);
             });
         }).catch(err => {
-            console.error('Erreur de chargement du PDF
+            console.error('Erreur de chargement du PDF:', err);
+            document.getElementById('pdfViewerContainer').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'flex';
+            document.getElementById('errorMessage').innerHTML = '<h1>❌ Erreur de chargement</h1><p>Impossible de charger le PDF. Vérifiez que l\'URL est correcte et accessible.</p><p style="margin-top:20px;"><code>' + pdfUrl + '</code></p>';
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft') onPrevPage();
+            if (e.key === 'ArrowRight') onNextPage();
+        });
+    })();
+    </script>
+</body>
+</html>
