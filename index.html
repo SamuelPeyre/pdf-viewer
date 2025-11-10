@@ -46,7 +46,7 @@
     <script>
     (function() {
         const urlParams = new URLSearchParams(window.location.search);
-        const pdfUrl = urlParams.get('pdf') || 'https://208d2653-a535-4df9-bed9-28aa5a432ac2.usrfiles.com/ugd/7d69d1_1e4452b1c7e34dd492b365c324553b36.pdf';
+        const pdfUrl = urlParams.get('pdf') || 'DEFAULT_PDF';
         
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
