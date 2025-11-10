@@ -21,10 +21,49 @@
         #pdfCanvasContainer {
             max-height: calc(100vh - 120px);
         }
+        #errorMessage {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 20px;
+            text-align: center;
+            background: #f5f5f5;
+        }
+        #errorMessage h1 {
+            color: #e74c3c;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        #errorMessage p {
+            color: #555;
+            font-size: 18px;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+        #errorMessage code {
+            background: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #e74c3c;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
-    <div id="pdfViewerContainer">
+    <div id="errorMessage" style="display:none;">
+        <h1>⚠️ Aucun PDF spécifié</h1>
+        <p>
+            Veuillez fournir l'URL d'un PDF en utilisant le paramètre <code>?pdf=</code> dans l'URL.
+        </p>
+        <p style="margin-top: 20px;">
+            <strong>Exemple :</strong><br>
+            <code>?pdf=https://exemple.com/mon-document.pdf</code>
+        </p>
+    </div>
+
+    <div id="pdfViewerContainer" style="display:none;">
         <div id="pdfControls" style="text-align:center;margin-bottom:10px;padding-top:10px;">
             <button id="pdfZoomOut" style="border-radius:999px;padding:10px 20px;cursor:pointer;">-</button>
             <button id="pdfZoomIn" style="border-radius:999px;padding:10px 20px;cursor:pointer;">+</button>
@@ -46,7 +85,16 @@
     <script>
     (function() {
         const urlParams = new URLSearchParams(window.location.search);
-        const pdfUrl = urlParams.get('pdf') || 'DEFAULT_PDF';
+        const pdfUrl = urlParams.get('pdf');
+        
+        // Vérifier si un PDF est spécifié
+        if (!pdfUrl) {
+            document.getElementById('errorMessage').style.display = 'flex';
+            return; // Arrêter l'exécution du script
+        }
+        
+        // Afficher le lecteur PDF
+        document.getElementById('pdfViewerContainer').style.display = 'block';
         
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -208,15 +256,4 @@
                 renderPage(pageNum);
             });
         }).catch(err => {
-            console.error('Erreur de chargement du PDF:', err);
-            document.getElementById('pdfCanvasContainer').innerHTML = '<div style="padding:20px;color:red;">Erreur de chargement du PDF. Vérifiez que l\'URL est correcte et accessible.</div>';
-        });
-
-        document.addEventListener('keydown', e => {
-            if (e.key === 'ArrowLeft') onPrevPage();
-            if (e.key === 'ArrowRight') onNextPage();
-        });
-    })();
-    </script>
-</body>
-</html>
+            console.error('Erreur de chargement du PDF
