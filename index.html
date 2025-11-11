@@ -17,9 +17,25 @@
         #pdfViewerContainer {
             width: 100vw;
             height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #pdfControls {
+            text-align: center;
+            padding: 10px 0;
+            flex-shrink: 0;
         }
         #pdfCanvasContainer {
-            max-height: calc(100vh - 120px);
+            flex: 1;
+            overflow: auto;
+            text-align: center;
+            position: relative;
+            min-height: 0;
+        }
+        #pdfNavControls {
+            text-align: center;
+            padding: 10px 0 50px 0;
+            flex-shrink: 0;
         }
         #errorMessage {
             display: flex;
@@ -64,17 +80,17 @@
     </div>
 
     <div id="pdfViewerContainer" style="display:none;">
-        <div id="pdfControls" style="text-align:center;margin-bottom:10px;padding-top:10px;">
+        <div id="pdfControls">
             <button id="pdfZoomOut" style="border-radius:999px;padding:10px 20px;cursor:pointer;">-</button>
             <button id="pdfZoomIn" style="border-radius:999px;padding:10px 20px;cursor:pointer;">+</button>
             <button id="pdfFullscreen" style="border-radius:999px;padding:10px 20px;cursor:pointer;">⛶ Plein écran</button>
         </div>
-        <div id="pdfCanvasContainer" style="text-align:center;overflow:auto;position:relative;">
+        <div id="pdfCanvasContainer">
             <button id="pdfArrowLeft" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);color:white;border:none;border-radius:50%;width:60px;height:60px;font-size:32px;cursor:pointer;opacity:0.7;z-index:10;">‹</button>
             <canvas id="pdfCanvas"></canvas>
             <button id="pdfArrowRight" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);color:white;border:none;border-radius:50%;width:60px;height:60px;font-size:32px;cursor:pointer;opacity:0.7;z-index:10;">›</button>
         </div>
-        <div id="pdfNavControls" style="text-align:center;margin-top:10px;padding-bottom:30px;">
+        <div id="pdfNavControls">
             <button id="pdfPrevPage" style="border-radius:999px;padding:10px 20px;cursor:pointer;">← Précédent</button>
             <span id="pdfPageInfo" style="margin:0 15px;"></span>
             <button id="pdfNextPage" style="border-radius:999px;padding:10px 20px;cursor:pointer;">Suivant →</button>
@@ -94,7 +110,7 @@
         }
         
         // Afficher le lecteur PDF
-        document.getElementById('pdfViewerContainer').style.display = 'block';
+        document.getElementById('pdfViewerContainer').style.display = 'flex';
         
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -105,6 +121,7 @@
         let scale = 1.5;
         let baseScale = 1.5;
         let maxPageWidth = 0;
+        let maxPageHeight = 0;
         let userZoomAdjustment = 0;
 
         const canvas = document.getElementById('pdfCanvas');
@@ -174,8 +191,18 @@
 
         function calculateOptimalZoom() {
             const container = document.getElementById('pdfCanvasContainer');
-            const containerWidth = container.clientWidth - 40;
-            baseScale = containerWidth / maxPageWidth;
+            const containerWidth = container.clientWidth - 40; // Marge pour les flèches
+            const containerHeight = container.clientHeight - 40; // Marge de sécurité
+            
+            // Calculer le zoom basé sur la largeur
+            const scaleByWidth = containerWidth / maxPageWidth;
+            
+            // Calculer le zoom basé sur la hauteur
+            const scaleByHeight = containerHeight / maxPageHeight;
+            
+            // Prendre le plus petit des deux pour éviter tout débordement
+            baseScale = Math.min(scaleByWidth, scaleByHeight, 2.0); // Maximum 2.0 pour éviter un zoom trop important
+            
             scale = baseScale + userZoomAdjustment;
         }
 
@@ -250,6 +277,9 @@
                     if (viewport.width > maxPageWidth) {
                         maxPageWidth = viewport.width;
                     }
+                    if (viewport.height > maxPageHeight) {
+                        maxPageHeight = viewport.height;
+                    }
                 });
                 
                 calculateOptimalZoom();
@@ -265,6 +295,12 @@
         document.addEventListener('keydown', e => {
             if (e.key === 'ArrowLeft') onPrevPage();
             if (e.key === 'ArrowRight') onNextPage();
+        });
+
+        // Recalculer le zoom lors du redimensionnement de la fenêtre/iframe
+        window.addEventListener('resize', function() {
+            calculateOptimalZoom();
+            queueRenderPage(pageNum);
         });
     })();
     </script>
