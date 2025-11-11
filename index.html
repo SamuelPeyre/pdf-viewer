@@ -82,6 +82,7 @@
     <div id="pdfViewerContainer" style="display:none;">
         <div id="pdfControls">
             <button id="pdfZoomOut" style="border-radius:999px;padding:10px 20px;cursor:pointer;">-</button>
+            <button id="pdfZoomAuto" style="border-radius:999px;padding:10px 20px;cursor:pointer;">↻ Auto</button>
             <button id="pdfZoomIn" style="border-radius:999px;padding:10px 20px;cursor:pointer;">+</button>
             <button id="pdfFullscreen" style="border-radius:999px;padding:10px 20px;cursor:pointer;">⛶ Plein écran</button>
         </div>
@@ -195,6 +196,12 @@
             queueRenderPage(pageNum);
         }
 
+        function resetZoom() {
+            userZoomAdjustment = 0;
+            scale = baseScale;
+            queueRenderPage(pageNum);
+        }
+
         function calculateOptimalZoom() {
             const container = document.getElementById('pdfCanvasContainer');
             const containerWidth = container.clientWidth - 40; // Marge pour les flèches
@@ -265,6 +272,7 @@
         document.getElementById('pdfNextPage').addEventListener('click', onNextPage);
         document.getElementById('pdfZoomIn').addEventListener('click', zoomIn);
         document.getElementById('pdfZoomOut').addEventListener('click', zoomOut);
+        document.getElementById('pdfZoomAuto').addEventListener('click', resetZoom);
         document.getElementById('pdfFullscreen').addEventListener('click', toggleFullscreen);
         document.getElementById('pdfArrowLeft').addEventListener('click', onPrevPage);
         document.getElementById('pdfArrowRight').addEventListener('click', onNextPage);
