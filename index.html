@@ -132,6 +132,12 @@
         function renderPage(num) {
             pageRendering = true;
             pdfDoc.getPage(num).then(page => {
+                // Recalculer le zoom optimal pour cette page spécifique
+                const pageViewport = page.getViewport({ scale: 1 });
+                maxPageWidth = pageViewport.width;
+                maxPageHeight = pageViewport.height;
+                calculateOptimalZoom();
+                
                 const viewport = page.getViewport({ scale: scale });
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
@@ -265,26 +271,8 @@
 
         pdfjsLib.getDocument(pdfUrl).promise.then(pdfDoc_ => {
             pdfDoc = pdfDoc_;
-            
-            const pagePromises = [];
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-                pagePromises.push(pdfDoc.getPage(i));
-            }
-            
-            Promise.all(pagePromises).then(pages => {
-                pages.forEach(page => {
-                    const viewport = page.getViewport({ scale: 1 });
-                    if (viewport.width > maxPageWidth) {
-                        maxPageWidth = viewport.width;
-                    }
-                    if (viewport.height > maxPageHeight) {
-                        maxPageHeight = viewport.height;
-                    }
-                });
-                
-                calculateOptimalZoom();
-                renderPage(pageNum);
-            });
+            // Le zoom sera calculé automatiquement pour chaque page lors du rendu
+            renderPage(pageNum);
         }).catch(err => {
             console.error('Erreur de chargement du PDF:', err);
             document.getElementById('pdfViewerContainer').style.display = 'none';
